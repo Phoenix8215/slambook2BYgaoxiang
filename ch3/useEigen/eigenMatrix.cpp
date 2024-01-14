@@ -95,13 +95,15 @@ int main(int argc, char **argv) {
   clock_t time_stt = clock(); // 计时
   // 直接求逆
   Matrix<double, MATRIX_SIZE, 1> x = matrix_NN.inverse() * v_Nd;
+  //0.13ms
   cout << "time of normal inverse is "
        << 1000 * (clock() - time_stt) / (double) CLOCKS_PER_SEC << "ms" << endl;
   cout << "x = " << x.transpose() << endl;
-
+  cout << "x = " << x << endl;
   // 通常用矩阵分解来求，例如QR分解，速度会快很多
   time_stt = clock();
   x = matrix_NN.colPivHouseholderQr().solve(v_Nd);
+  //0.108ms
   cout << "time of Qr decomposition is "
        << 1000 * (clock() - time_stt) / (double) CLOCKS_PER_SEC << "ms" << endl;
   cout << "x = " << x.transpose() << endl;
@@ -109,6 +111,7 @@ int main(int argc, char **argv) {
   // 对于正定矩阵，还可以用cholesky分解来解方程
   time_stt = clock();
   x = matrix_NN.ldlt().solve(v_Nd);
+  //0.043ms
   cout << "time of ldlt decomposition is "
        << 1000 * (clock() - time_stt) / (double) CLOCKS_PER_SEC << "ms" << endl;
   cout << "x = " << x.transpose() << endl;
