@@ -8,7 +8,7 @@ using namespace std;
 using namespace Eigen;
 
 // path to trajectory file
-string trajectory_file = "./examples/trajectory.txt";
+string trajectory_file = "/home/phoenix/fz/slambook2BYgaoxiang/ch3/examples/trajectory.txt";
 
 void DrawTrajectory(vector<Isometry3d, Eigen::aligned_allocator<Isometry3d>>);
 
@@ -59,7 +59,7 @@ void DrawTrajectory(vector<Isometry3d, Eigen::aligned_allocator<Isometry3d>> pos
     glLineWidth(2);
     for (size_t i = 0; i < poses.size(); i++) {
       // 画每个位姿的三个坐标轴
-      Vector3d Ow = poses[i].translation();
+      Vector3d Ow = poses[i].translation();//用于从一个刚体变换（Isometry3d 对象）中提取其平移向量
       Vector3d Xw = poses[i] * (0.1 * Vector3d(1, 0, 0));
       Vector3d Yw = poses[i] * (0.1 * Vector3d(0, 1, 0));
       Vector3d Zw = poses[i] * (0.1 * Vector3d(0, 0, 1));
