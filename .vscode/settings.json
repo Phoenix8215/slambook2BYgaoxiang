@@ -1,12 +1,14 @@
 {
     "cmake.sourceDirectory": "/home/phoenix/fz/slambook2BYgaoxiang/ch2",
     "files.associations": {
+        "*.config": "makefile",
         "array": "cpp",
         "bitset": "cpp",
         "string_view": "cpp",
         "initializer_list": "cpp",
         "utility": "cpp",
         "cmath": "cpp",
-        "complex": "cpp"
+        "complex": "cpp",
+        "core": "cpp"
     }
 }
