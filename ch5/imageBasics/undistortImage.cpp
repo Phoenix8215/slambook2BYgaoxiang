@@ -77,11 +77,6 @@ void scale1(cv::Mat& input_img,int width,int height)
 }
 
 
-// 双线性插值
-void scale2(cv::Mat& input_img,int width,int height) {
-
-}
-
 
 int main() {
     
