@@ -1,7 +1,3 @@
-//
-// Created by xiang on 18-11-19.
-//
-
 #include <iostream>
 #include <opencv2/core/core.hpp>
 #include <ceres/ceres.h>

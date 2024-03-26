@@ -1,78 +1,163 @@
 #include <iostream>
-#include <chrono>
+#include <eigen3/Eigen/Core>
+#include <vector>
 #include <opencv2/opencv.hpp>
-#include <Eigen/Core>
-#include <Eigen/Dense>
+#include <eigen3/Eigen/Cholesky>
+#include <eigen3/Eigen/QR>
+#include <eigen3/Eigen/SVD>
+#include <chrono>
 
-using namespace std;
-using namespace Eigen;
+/* 手写高斯-牛顿法 */
+
+// 定义一个记时类
+
+class Runtimer {
+public:
+  inline void start() {
+    t_s_ = std::chrono::steady_clock::now();
+  }
+
+  inline void stop() {
+    t_e_ = std::chrono::steady_clock::now();
+  }
+
+  inline double duration() {
+    return std::chrono::duration_cast<std::chrono::duration<double>>(t_e_ - t_s_).count() * 1000.0;
+  }
+
+private:
+  std::chrono::steady_clock::time_point t_s_;
+  std::chrono::steady_clock::time_point t_e_;
+
+};
+
+/* 优化方程 */
+/*  优化方程 */
+class CostFunction{
+public:
+        CostFunction(double* a, double* b, double* c, int max_iter, double min_step, bool is_out):
+        a_(a), b_(b), c_(c), max_iter_(max_iter), min_step_(min_step), is_out_(is_out)
+        {}
+        
+        void addObservation(double x, double y)
+        {
+            std::vector<double> ob;
+            ob.push_back(x);
+            ob.push_back(y);
+            obs_.push_back(ob);
+        }
+        
+        void calcJ_fx()
+        {
+            J_ .resize(obs_.size(), 3);
+            fx_.resize(obs_.size(), 1);
+            
+            for ( size_t i = 0; i < obs_.size(); i ++)
+            {
+                std::vector<double>& ob = obs_.at(i);
+                double& x = ob.at(0);
+                double& y = ob.at(1);
+                double j1 = -x*x*exp(*a_ * x*x + *b_*x + *c_);
+                double j2 = -x*exp(*a_ * x*x + *b_*x + *c_);
+                double j3 = -exp(*a_ * x*x + *b_*x + *c_);
+                J_(i, 0 ) = j1;
+                J_(i, 1) = j2;
+                J_(i, 2) = j3;
+                fx_(i, 0) = y - exp( *a_ *x*x + *b_*x +*c_);
+            }
+        }
+       
+       void calcH_b()
+        {
+            H_ = J_.transpose() * J_;
+            B_ = -J_.transpose() * fx_;
+        }
+        
+        void calcDeltax()
+        {
+            deltax_ = H_.ldlt().solve(B_); 
+        }
+       
+       void updateX()
+        {
+            *a_ += deltax_(0);
+            *b_ += deltax_(1);
+            *c_ += deltax_(2);
+        }
+        
+        double getCost()
+        {
+            Eigen::MatrixXd cost= fx_.transpose() * fx_;
+            return cost(0,0);
+        }
+        
+        void solveByGaussNewton()
+        {
+            double sumt =0;
+            bool is_conv = false;
+            for( size_t i = 0; i < max_iter_; i ++)
+            {
+                Runtimer t;
+                t.start();
+                calcJ_fx();
+                calcH_b();
+                calcDeltax();
+                double delta = deltax_.transpose() * deltax_;
+                t.stop();
+                if( is_out_ )
+                {
+                    std::cout << "Iter: " << std::left <<std::setw(3) << i << " Result: "<< std::left <<std::setw(10)  << *a_ << " " << std::left <<std::setw(10)  << *b_ << " " << std::left <<std::setw(10) << *c_ << 
+                    " step: " << std::left <<std::setw(14) << delta << " cost: "<< std::left <<std::setw(14)  << getCost() << " time: " << std::left <<std::setw(14) << t.duration()  <<
+                    " total_time: "<< std::left <<std::setw(14) << (sumt += t.duration()) << std::endl;
+                }
+                if( delta < min_step_)
+                {
+                    is_conv = true;
+                    break;
+                }
+                updateX();
+            }
+           
+           if( is_conv  == true)
+                std::cout << "\nConverged\n";
+            else
+                std::cout << "\nDiverged\n\n";
+        }
+        
+        Eigen::MatrixXd fx_;
+        Eigen::MatrixXd J_; // 雅克比矩阵(包含多组观测数据!)
+        Eigen::Matrix3d H_; // H矩阵
+        Eigen::Vector3d B_;
+        Eigen::Vector3d deltax_;
+        std::vector< std::vector<double>  > obs_; // 观测
+        double* a_, *b_, *c_;
+        
+        int max_iter_;
+        double min_step_;
+        bool is_out_;
+};//class CostFunction
 
 int main(int argc, char **argv) {
-  double ar = 1.0, br = 2.0, cr = 1.0;         // 真实参数值
-  double ae = 2.0, be = -1.0, ce = 5.0;        // 估计参数值
-  int N = 100;                                 // 数据点
-  double w_sigma = 1.0;                        // 噪声Sigma值
-  double inv_sigma = 1.0 / w_sigma;
-  cv::RNG rng;                                 // OpenCV随机数产生器
-
-  vector<double> x_data, y_data;      // 数据
-  for (int i = 0; i < N; i++) {
-    double x = i / 100.0;
-    x_data.push_back(x);
-    y_data.push_back(exp(ar * x * x + br * x + cr) + rng.gaussian(w_sigma * w_sigma));
-  }
-
-  // 开始Gauss-Newton迭代
-  int iterations = 100;    // 迭代次数
-  double cost = 0, lastCost = 0;  // 本次迭代的cost和上一次迭代的cost
-
-  chrono::steady_clock::time_point t1 = chrono::steady_clock::now();
-  for (int iter = 0; iter < iterations; iter++) {
-
-    Matrix3d H = Matrix3d::Zero();             // Hessian = J^T W^{-1} J in Gauss-Newton
-    Vector3d b = Vector3d::Zero();             // bias
-    cost = 0;
-
-    for (int i = 0; i < N; i++) {
-      double xi = x_data[i], yi = y_data[i];  // 第i个数据点
-      double error = yi - exp(ae * xi * xi + be * xi + ce);
-      Vector3d J; // 雅可比矩阵
-      J[0] = -xi * xi * exp(ae * xi * xi + be * xi + ce);  // de/da
-      J[1] = -xi * exp(ae * xi * xi + be * xi + ce);  // de/db
-      J[2] = -exp(ae * xi * xi + be * xi + ce);  // de/dc
-
-      H += inv_sigma * inv_sigma * J * J.transpose();
-      b += -inv_sigma * inv_sigma * error * J;
-
-      cost += error * error;
+    
+    const double aa = 0.1, bb = 0.5, cc = 2; // 实际方程的参数
+    double a =0.0, b=0.0, c=0.0; // 初值
+    
+    /* 构造问题 */
+    CostFunction cost_func(&a, &b, &c, 50, 1e-10, true);
+    
+    /* 制造数据 */
+    const size_t N = 100; //数据个数
+    cv::RNG rng(cv::getTickCount());
+    for( size_t i = 0; i < N; i ++)
+    {
+        /* 生产带有高斯噪声的数据　*/
+       double x = rng.uniform(0.0, 1.0) ;
+       double y = exp(aa*x*x + bb*x + cc) + rng.gaussian(0.05);
+       
+       /* 添加到观测中　*/
+       cost_func.addObservation(x, y);
     }
-
-    // 求解线性方程 Hx=b
-    Vector3d dx = H.ldlt().solve(b);
-    if (isnan(dx[0])) {
-      cout << "result is nan!" << endl;
-      break;
-    }
-
-    if (iter > 0 && cost >= lastCost) {
-      cout << "cost: " << cost << ">= last cost: " << lastCost << ", break." << endl;
-      break;
-    }
-
-    ae += dx[0];
-    be += dx[1];
-    ce += dx[2];
-
-    lastCost = cost;
-
-    cout << "total cost: " << cost << ", \t\tupdate: " << dx.transpose() <<
-         "\t\testimated params: " << ae << "," << be << "," << ce << endl;
-  }
-
-  chrono::steady_clock::time_point t2 = chrono::steady_clock::now();
-  chrono::duration<double> time_used = chrono::duration_cast<chrono::duration<double>>(t2 - t1);
-  cout << "solve time cost = " << time_used.count() << " seconds. " << endl;
-
-  cout << "estimated abc = " << ae << ", " << be << ", " << ce << endl;
-  return 0;
+    /* 用高斯牛顿法求解 */
+    cost_func.solveByGaussNewton();
+    return 0;
 }
