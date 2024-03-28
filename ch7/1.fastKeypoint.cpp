@@ -35,15 +35,24 @@ public:
      * @brief 对关键点进行非极大值抑制
      * 
      */
-    void nms(std::vector<cv::Point>&keyPoint) {
-        for(int i = 0; i<keyPoint.size(), i++) {
-            for(int j = 1; j<keyPoint.size(), j++) {
-                if(sqrt(pow((keyPoint[i].x - keyPoint[j].x), 2) + pow((keyPoint[i].y - keyPoint[j].y))))
-            }
-        }
-    }
+    // void nms(std::vector<cv::Point>&keyPoint, const cv::Mat &srcImg) {
+    //     for(int i = 0; i<keyPoint.size(); i++) {
+    //         for(int j = 1; j<keyPoint.size(); j++) {
+    //             if(sqrt(pow((keyPoint[i].x - keyPoint[j].x), 2) + pow((keyPoint[i].y - keyPoint[j].y), 2)) < 3) {
+    //                 // 保留亮度最大的像素值
+    //                 if(srcImg.at<uchar>(keyPoint[i].x, keyPoint[i].y) < srcImg.at<uchar>(keyPoint[j].x, keyPoint[j].y)) {
+    //                     auto it = keyPoint.begin() + j;
+    //                     keyPoint.erase(it);
+    //                 } else {
+    //                     auto it = keyPoint.begin() + i;
+    //                     keyPoint.erase(it);
+    //                 }
+    //             }
+    //         }
+    //     }
+    // }
 
-    void fastDectKey(const cv::Mat srcImg,std::vector<cv::Point>&keyPoint,double T){
+    void fastDectKey(const cv::Mat &srcImg, std::vector<cv::Point>&keyPoint, double T){
         assert(!srcImg.empty());
         cv::Mat img;
         int row=srcImg.rows;
@@ -66,13 +75,16 @@ public:
                 if(ipVec.size()==16){
                     if(isKeyPoint(ipval,T,ipVec)){
                         keyPoint.push_back(cv::Point(j,i));
+                        // nms(keyPoint);
                         // cv::circle(srcImg,cv::Point(j,i),2,cv::Scalar(255,255,0),1,cv::LINE_8);
                     }
+                    // nms(keyPoint, srcImg);
+
                     ipVec.clear();
                 }
             }
         }
-        cv::imwrite("res-key.png",srcImg);
+        cv::imwrite("res-keywithNoNMS.png",srcImg);
     }
 
 };
