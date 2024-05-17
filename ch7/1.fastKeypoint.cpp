@@ -2,6 +2,8 @@
 #include <opencv2/opencv.hpp>
 #include <cmath>
 
+static const int R = 6;
+
 class FastKeyPointDec {
 public:
     /**
@@ -35,22 +37,33 @@ public:
      * @brief 对关键点进行非极大值抑制
      * 
      */
-    // void nms(std::vector<cv::Point>&keyPoint, const cv::Mat &srcImg) {
-    //     for(int i = 0; i<keyPoint.size(); i++) {
-    //         for(int j = 1; j<keyPoint.size(); j++) {
-    //             if(sqrt(pow((keyPoint[i].x - keyPoint[j].x), 2) + pow((keyPoint[i].y - keyPoint[j].y), 2)) < 3) {
-    //                 // 保留亮度最大的像素值
-    //                 if(srcImg.at<uchar>(keyPoint[i].x, keyPoint[i].y) < srcImg.at<uchar>(keyPoint[j].x, keyPoint[j].y)) {
-    //                     auto it = keyPoint.begin() + j;
-    //                     keyPoint.erase(it);
-    //                 } else {
-    //                     auto it = keyPoint.begin() + i;
-    //                     keyPoint.erase(it);
-    //                 }
-    //             }
-    //         }
-    //     }
-    // }
+    void nms(std::vector<cv::Point>&keyPoint, const cv::Mat &srcImg) {
+        // 在删除元素后会将后续元素向前移动
+        std::vector<cv::Point> result;
+        std::vector<bool> isKept(keyPoint.size(), true);
+        for (int i = 0; i < keyPoint.size(); i++) {
+            if(!isKept[i]) continue;
+            for (int j = i + 1; j < keyPoint.size(); j++) {
+                if (sqrt(pow((keyPoint[i].x - keyPoint[j].x), 2) + pow((keyPoint[i].y - keyPoint[j].y), 2)) < R) {
+                    if (keyPoint[i].x > 0 && keyPoint[i].y > 0 && keyPoint[i].x < srcImg.rows && keyPoint[i].y < srcImg.cols && \
+                    keyPoint[j].x > 0 && keyPoint[j].y > 0 && keyPoint[j].x < srcImg.rows && keyPoint[j].y < srcImg.cols) {
+                        // 保留亮度最大的像素值
+                        if (srcImg.at<uchar>(keyPoint[i].x, keyPoint[i].y) < srcImg.at<uchar>(keyPoint[j].x, keyPoint[j].y)) {
+                            isKept[i] = false;
+                        } else {
+                            isKept[j] = false;
+                        }
+                    }
+                }
+            }
+        }
+        for(size_t i = 0; i < keyPoint.size(); i++) {
+            if(isKept[i]) {
+                result.push_back(keyPoint[i]);
+            }
+        }
+        keyPoint = std::move(result);
+    }
 
     void fastDectKey(const cv::Mat &srcImg, std::vector<cv::Point>&keyPoint, double T){
         assert(!srcImg.empty());
@@ -75,16 +88,16 @@ public:
                 if(ipVec.size()==16){
                     if(isKeyPoint(ipval,T,ipVec)){
                         keyPoint.push_back(cv::Point(j,i));
-                        // nms(keyPoint);
-                        // cv::circle(srcImg,cv::Point(j,i),2,cv::Scalar(255,255,0),1,cv::LINE_8);
                     }
-                    // nms(keyPoint, srcImg);
-
                     ipVec.clear();
                 }
             }
         }
-        cv::imwrite("res-keywithNoNMS.png",srcImg);
+        nms(keyPoint, srcImg);
+        for (const auto &item:keyPoint) {
+                cv::circle(srcImg, item, 2, cv::Scalar(255, 255, 0), 1, cv::LINE_8);
+        }
+        cv::imwrite("res-keywithNMS.png",srcImg);
     }
 
 };
