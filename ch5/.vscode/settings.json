@@ -1,0 +1,7 @@
+{
+    "files.associations": {
+        "*.config": "makefile",
+        "ostream": "cpp",
+        "chrono": "cpp"
+    }
+}
