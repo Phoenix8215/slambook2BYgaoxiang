@@ -45,7 +45,9 @@ int main(int argc, char **argv) {
             // 根据双目模型计算 point 的位置
             double x = (u - cx) / fx;
             double y = (v - cy) / fy;
+            // fx = fy所以乘哪个都是可以的
             double depth = fx * b / (disparity.at<float>(v, u));
+            // depth就是 z , 乘depth就是将归一化坐标转换到世界坐标系下
             point[0] = x * depth;
             point[1] = y * depth;
             point[2] = depth;
