@@ -32,8 +32,8 @@ int main(int argc, char **argv) {
         double data[7] = {0};
         for (auto &d:data)
             fin >> d;
-        Sophus::SE3d pose(Eigen::Quaterniond(data[6], data[3], data[4], data[5]), \
-                          Eigen::Vector3d(data[0], data[1], data[2]));
+        Sophus::SE3d pose(Eigen::Quaterniond(data[6], data[3], data[4], data[5]), \ /*用四元数来表示旋转*/
+                          Eigen::Vector3d(data[0], data[1], data[2])); // 平移向量 
         poses.push_back(pose);
     }
 
@@ -57,9 +57,11 @@ int main(int argc, char **argv) {
                 unsigned int d = depth.ptr<unsigned short>(v)[u]; // 深度值
                 if (d == 0) continue; // 为0表示没有测量到
                 Eigen::Vector3d point;
+                // 求归一化坐标系下物体的坐标
                 point[2] = double(d) / depthScale;
                 point[0] = (u - cx) * point[2] / fx;
                 point[1] = (v - cy) * point[2] / fy;
+                // 乘上外参得到真实世界中点的坐标
                 Eigen::Vector3d pointWorld = T * point;
 
                 Vector6d p;
